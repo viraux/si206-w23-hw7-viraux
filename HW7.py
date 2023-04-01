@@ -94,6 +94,14 @@ def make_players_table(data, cur, conn):
         # the player's name, their position_id, and their nationality.
 
 def nationality_search(countries, cur, conn):
+    l = []
+    #go through each country, find the info on each player, add it to the overall list
+    for country in countries:
+        players = cur.execute("""SELECT name, position_id, nationality FROM Players WHERE nationality = (?)""",
+                        (country,)).fetchall()
+        l.extend(players)
+
+    return l
     pass
 
 ## [TASK 3]: 10 points
@@ -201,16 +209,16 @@ class TestAllMethods(unittest.TestCase):
         self.assertIs(type(players_list[0][3]), int)
         self.assertIs(type(players_list[0][4]), str)
 
-    # def test_nationality_search(self):
-    #     x = sorted(nationality_search(['England'], self.cur, self.conn))
-    #     self.assertEqual(len(x), 11)
-    #     self.assertEqual(len(x[0]), 3)
-    #     self.assertEqual(x[0][0], "Aaron Wan-Bissaka")
+    def test_nationality_search(self):
+        x = sorted(nationality_search(['England'], self.cur, self.conn))
+        self.assertEqual(len(x), 11)
+        self.assertEqual(len(x[0]), 3)
+        self.assertEqual(x[0][0], "Aaron Wan-Bissaka")
 
-    #     y = sorted(nationality_search(['Brazil'], self.cur, self.conn))
-    #     self.assertEqual(len(y), 3)
-    #     self.assertEqual(y[2],('Fred', 2, 'Brazil'))
-    #     self.assertEqual(y[0][1], 3)
+        y = sorted(nationality_search(['Brazil'], self.cur, self.conn))
+        self.assertEqual(len(y), 3)
+        self.assertEqual(y[2],('Fred', 2, 'Brazil'))
+        self.assertEqual(y[0][1], 3)
 
     # def test_birthyear_nationality_search(self):
 
@@ -258,6 +266,7 @@ def main():
     cur, conn = open_database('Football.db')
     make_positions_table(json_data, cur, conn)
     make_players_table(json_data, cur, conn)
+    nationality_search(['England','Brazil'],cur,conn)
     conn.close()
 
 
