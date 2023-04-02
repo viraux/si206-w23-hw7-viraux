@@ -9,6 +9,7 @@ import sqlite3
 import json
 import os
 import re
+import datetime
 
 def read_data(filename):
     full_path = os.path.join(os.path.dirname(__file__), filename)
@@ -101,6 +102,7 @@ def nationality_search(countries, cur, conn):
                         (country,)).fetchall()
         l.extend(players)
 
+    
     return l
     pass
 
@@ -121,6 +123,21 @@ def nationality_search(countries, cur, conn):
 
 
 def birthyear_nationality_search(age, country, cur, conn):
+    #get the current year and subtract it from the age value
+    day = datetime.datetime.now()
+
+    max_year = int(day.strftime("%Y")) - age
+    #search for the players from the country and over the given age
+    players = cur.execute("""SELECT name, nationality, birthyear FROM Players WHERE 
+    nationality = (?) and birthyear < (?)""",
+                        (country,max_year)).fetchall()
+    
+    # print(players)
+
+    return players
+
+
+    
     pass
 
 ## [TASK 4]: 15 points
@@ -220,13 +237,13 @@ class TestAllMethods(unittest.TestCase):
         self.assertEqual(y[2],('Fred', 2, 'Brazil'))
         self.assertEqual(y[0][1], 3)
 
-    # def test_birthyear_nationality_search(self):
+    def test_birthyear_nationality_search(self):
 
-    #     a = birthyear_nationality_search(24, 'England', self.cur, self.conn)
-    #     self.assertEqual(len(a), 7)
-    #     self.assertEqual(a[0][1], 'England')
-    #     self.assertEqual(a[3][2], 1992)
-    #     self.assertEqual(len(a[1]), 3)
+        a = birthyear_nationality_search(24, 'England', self.cur, self.conn)
+        self.assertEqual(len(a), 7)
+        self.assertEqual(a[0][1], 'England')
+        self.assertEqual(a[3][2], 1992)
+        self.assertEqual(len(a[1]), 3)
 
     # def test_type_speed_defense_search(self):
     #     b = sorted(position_birth_search('Goalkeeper', 35, self.cur, self.conn))
@@ -267,6 +284,7 @@ def main():
     make_positions_table(json_data, cur, conn)
     make_players_table(json_data, cur, conn)
     nationality_search(['England','Brazil'],cur,conn)
+    birthyear_nationality_search(18, "England", cur, conn)
     conn.close()
 
 
