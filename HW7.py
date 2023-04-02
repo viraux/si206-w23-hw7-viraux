@@ -211,12 +211,77 @@ ON Positions.id = Players.position_id WHERE Positions.position = (?) and Players
 #     the passed year. 
 
 def make_winners_table(data, cur, conn):
+    # print(data)
+
+    winners = []
+    cur.execute("""CREATE TABLE IF NOT EXISTS Winners
+    (id INTEGER PRIMARY KEY, name TEXT)""")
+    for season in data['seasons']:
+        if season.get('winner') != None:
+            # print(season['winner']['id'])
+            id =  season['winner']['id']
+            name = season['winner']['name']
+            # print(name)
+            if (id,name) not in winners:
+                winners.append((id,name))
+
+    # print(winners)
+    for winner in winners:
+        cur.execute("""INSERT OR IGNORE INTO Winners (id, name) 
+            VALUES (?,?)""", (winner))
+
+    
+
+    conn.commit()
     pass
 
 def make_seasons_table(data, cur, conn):
+
+    cur.execute("""CREATE TABLE IF NOT EXISTS Seasons
+    (id INTEGER PRIMARY KEY, winner_id INTEGER, end_year INTEGER)""")
+     
+    for season in data['seasons']:
+        if data["currentSeason"]['id'] == season['id'] or season.get('winner') == None:
+            continue
+        # print(season)
+        id = season['id']
+        winner_name = season['winner']['name']
+        winner_id = cur.execute("""SELECT id FROM Winners WHERE name = (?)
+        """,(winner_name,)).fetchone()[0]
+        # print(winner_id)
+        end_year = re.findall("^\d{4}",season['endDate'])[0]
+        # print(end_year)
+        cur.execute("""INSERT OR IGNORE INTO Seasons (id, winner_id, end_year) VALUES (?,?,?)""",
+                    (id,winner_id,end_year))
+        
+
+        conn.commit()
+        
+
+
+
     pass
 
 def winners_since_search(year, cur, conn):
+
+    count_d = {}
+
+    recent_winners = cur.execute("""SELECT Winners.name 
+    FROM Winners
+    JOIN Seasons
+    ON Winners.id = Seasons.winner_id WHERE Seasons.end_year >= (?)"""
+                                 ,(year,)).fetchall()
+    # print(recent_winners)
+
+    for winner in recent_winners:
+        winner = winner[0]
+        count_d[winner] = count_d.get(winner,0) + 1
+
+    # print(count_d)
+    return count_d
+
+
+
     pass
 
 
@@ -271,22 +336,34 @@ class TestAllMethods(unittest.TestCase):
         self.assertEqual(len(c), 1)
         self.assertEqual(c, [('Teden Mengi', 'Defence', 2002)])
     
-    # # test extra credit
-    # def test_make_winners_table(self):
-    #     self.cur2.execute('SELECT * from Winners')
-    #     winners_list = self.cur2.fetchall()
+    # test extra credit
+    def test_make_winners_table(self):
+        self.cur2.execute('SELECT * from Winners')
+        winners_list = self.cur2.fetchall()
+        # print(winners_list)
+        
+        self.assertEqual(len(winners_list), 7, "checking correct length of database")
+        self.assertIs(type(winners_list[0][0]),int, "checking type of id")
+        self.assertIs(type(winners_list[0][1]),str, "checking type of winner name")
+                      
 
-    #     pass
+        pass
 
-    # def test_make_seasons_table(self):
-    #     self.cur2.execute('SELECT * from Seasons')
-    #     seasons_list = self.cur2.fetchall()
+    def test_make_seasons_table(self):
+        self.cur2.execute('SELECT * from Seasons')
+        seasons_list = self.cur2.fetchall()
+        self.assertEqual(len(seasons_list), 28, "checking correct length of database")
+        self.assertEqual(len(str(seasons_list[0][-1])),4, "checking only the year is stored")
+        self.assertIs(type(seasons_list[0][0]),int, "checking type of id")
 
-    #     pass
+        pass
 
-    # def test_winners_since_search(self):
+    def test_winners_since_search(self):
+        test1 = winners_since_search(2015, self.cur2, self.conn2)
+        self.assertEqual(type(test1),dict,"checking return type")
+        self.assertEqual(test1['Chelsea FC'],2,"checking win count for Chelsea")
 
-    #     pass
+        pass
 
 
 def main():
@@ -307,6 +384,7 @@ def main():
     cur2, conn2 = open_database('Football_seasons.db')
     make_winners_table(seasons_json_data, cur2, conn2)
     make_seasons_table(seasons_json_data, cur2, conn2)
+    winners_since_search(2015, cur2, conn2)
     conn2.close()
 
 
